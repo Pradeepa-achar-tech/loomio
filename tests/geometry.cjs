@@ -1,0 +1,33 @@
+﻿const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
+const elements=new Map(),calls=[];
+function element(){return {checked:true,value:'',textContent:'',style:{},handlers:{},addEventListener(n,f){this.handlers[n]=f},append(){},querySelector(){return element()},getBoundingClientRect(){return {left:0,top:0,width:500,height:550}},setPointerCapture(){},focus(){},click(){}}}
+function get(id){if(!elements.has(id))elements.set(id,element());return elements.get(id)}
+const ctx=new Proxy({},{get:(_,name)=>(...args)=>calls.push([name,...args])});
+get('#canvas').getContext=()=>ctx;get('#canvas').toDataURL=()=>{assert(!calls.some(c=>c[0]==='arc'),'export excludes handles');return 'data:image/png;base64,'};get('#color').value='#c66b46';
+const sandbox={document:{querySelector:get,createElement:element},Math,Number,console};
+vm.createContext(sandbox);vm.runInContext(fs.readFileSync('dist/app.js','utf8'),sandbox);
+const run=s=>vm.runInContext(s,sandbox),near=(a,b)=>assert(Math.abs(a-b)<1e-7,a+' != '+b);
+assert.equal(run('anatomy.face.length'),9);
+run('state.rotation=23;state.size=310;state.x=375;state.y=460');
+const roundtrip=run('fromCanvas(toCanvas([-.45,.72]))');near(roundtrip[0],-.45);near(roundtrip[1],.72);
+run("resizeFeature('leftEye','width',.48)");near(run('distance(anatomy.leftEye[0],anatomy.leftEye[1])'),.48);
+near(run('distance(anatomy.rightEye[0],anatomy.rightEye[1])'),.35);
+run("resizeFeature('lips','height',.22)");near(run('distance(anatomy.lips[2],anatomy.lips[3])'),.22);
+run('photo={width:2000,height:2200};state.rotation=0;state.size=260;draw()');
+assert.match(get('#leftEyewidthout').textContent,/249.6 px/);
+assert.match(get('#measurements').innerHTML,/image px/);
+run("selected='face:1';draw()");
+const before=run('sourcePoint(anatomy.face[1])');
+get('#canvas').handlers.keydown({key:'ArrowRight',shiftKey:true,preventDefault(){}});
+near(run('sourcePoint(anatomy.face[1])[0]'),before[0]+10);
+const target=run('toCanvas(anatomy.face[1])');
+get('#canvas').handlers.pointerdown({clientX:target[0]/2,clientY:target[1]/2,pointerId:1});
+assert.equal(run('selected'),'face:1');
+get('#canvas').handlers.pointermove({clientX:target[0]/2+10,clientY:target[1]/2});
+near(run('toCanvas(anatomy.face[1])[0]'),target[0]+20);
+get('#canvas').handlers.pointerup();
+calls.length=0;get('#handles').handlers.input({type:'input'});assert(calls.some(c=>c[0]==='arc'),'input events preserve handles');
+calls.length=0;get('#export').onclick();
+get('#reset').onclick();near(run('anatomy.face[1][0]'),-.72);assert.equal(run('selected'),null);
+get('#anatomy').checked=false;calls.length=0;run('draw()');assert(!calls.some(c=>c[0]==='arc'));
+console.log('PASS: contour points, independent feature sizing, rotated coordinates, source-pixel measurements, keyboard nudging, point dragging, event rendering, clean export, reset, visibility');
