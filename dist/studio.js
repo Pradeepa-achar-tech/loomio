@@ -5,6 +5,7 @@ let toastTimer;
 function showToast(message){const toast=document.querySelector('#toast');toast.textContent=message;toast.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('visible'),3500)}
 function refreshStudio(){
  emptyState.hidden=!!photo;
+ workspace.classList.toggle("is-empty",!photo);
  document.querySelector('#hide').disabled=!photo;
  document.querySelector('#hide').setAttribute('aria-pressed',String(!photoVisible));
  document.querySelector('#export').disabled=!photo;
@@ -28,3 +29,18 @@ document.querySelector('#focus').onclick=()=>{
 document.querySelector('#hide').addEventListener('click',refreshStudio);
 document.querySelector('#export').addEventListener('click',()=>showToast('PNG prepared. Check your browser downloads.'));
 refreshStudio();
+const studioTabs=[...document.querySelectorAll('.tool-tabs [role="tab"]')];
+const studioPanels=[...document.querySelectorAll('.toolsection')];
+const panelIds=['reference','structure','features','display'];
+const panelTitles=['Your reference','Sphere & alignment','Face, eyes & lips','Display settings'];
+function activateToolTab(index,focus=false){
+ studioTabs.forEach((tab,i)=>{const active=i===index;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;studioPanels[i].hidden=!active;studioPanels[i].open=true;});
+ document.querySelector('#tool-heading').textContent=panelTitles[index];
+ if(focus)studioTabs[index].focus();
+}
+studioPanels.forEach((panel,i)=>{panel.id='panel-'+panelIds[i];panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby','tab-'+panelIds[i]);});
+studioTabs.forEach((tab,i)=>{
+ tab.addEventListener('click',()=>activateToolTab(i));
+ tab.addEventListener('keydown',e=>{let next;if(e.key==='ArrowRight')next=(i+1)%4;if(e.key==='ArrowLeft')next=(i+3)%4;if(e.key==='Home')next=0;if(e.key==='End')next=3;if(next!==undefined){e.preventDefault();activateToolTab(next,true);}});
+});
+activateToolTab(0);
