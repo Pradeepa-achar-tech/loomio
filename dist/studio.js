@@ -1,4 +1,6 @@
 ﻿const emptyState=document.querySelector('#empty'),workspace=document.querySelector('.workspace');
+// Clear a file picker restored by the browser; studies are never persisted.
+document.querySelector('#file').value='';
 let toastTimer;
 function showToast(message){const toast=document.querySelector('#toast');toast.textContent=message;toast.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('visible'),3500)}
 function refreshStudio(){
